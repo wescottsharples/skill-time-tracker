@@ -75,8 +75,9 @@ class TimeTrackerSkill(MycroftSkill):
         util.data_checker()
         util.set_max_projects()
         data = util.read_data()
+        proj_name = message.data["project"]
         proj_num = int(data["max_projects"]) + 1
-        proj_val = [data[self.project][0], "0", {}]
+        proj_val = [proj_name, "0", {}]
         proj_key = "list_project_{}".format(str(proj_num))
         proj_data = {proj_key: proj_val}
         util.write_data(proj_data)
@@ -85,7 +86,7 @@ class TimeTrackerSkill(MycroftSkill):
     def handle_delete_projects_intent(self, message):
         util.data_checker()
         data = util.read_data()
-        proj_name = #TODO insert user input here
+        proj_name = message.data["project"]
         name = get_project()
         del data[proj_name]
         util.update_data(data)
@@ -103,6 +104,7 @@ class TimeTrackerSkill(MycroftSkill):
         project_calendar = data[self.project][2]
         self.curr_total = time.time() - self.s_time
         # Tracking current day's time
+        # TODO track if theres new data, if yes then use write not update
         if project_calendar == {}:
             project_calendar[today_date] = str(self.curr_total)
         else:
