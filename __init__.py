@@ -18,6 +18,7 @@
 import os
 import util
 import time
+from datetime import datetime
 from adapt.intent import IntentBuilder
 
 from mycroft.skills.core import MycroftSkill
@@ -98,7 +99,17 @@ class TimeTrackerSkill(MycroftSkill):
     def handle_stop_projects_intent(self, message):
         util.data_checker()
         data = util.read_data()
+        today_date = str(datetime.today()).split()[0]
+        project_calendar = data[self.project][2]
         self.curr_total = time.time() - self.s_time
+        # Tracking current day's time
+        if project_calendar == {}:
+            project_calendar[today_date] = str(self.curr_total)
+        else:
+            res = float(project_calendar[today_date])
+            res += self.curr_total
+            project_calendar[today_date] = str(res)
+        data[self.project][2] = project_calendar
         # Transferring current start-stop total time session to project session
         self.total_time += self.curr_total
         if str(data[self.project][1]) != "0":
@@ -107,6 +118,7 @@ class TimeTrackerSkill(MycroftSkill):
             data[self.project][1] = str(tempnum)
         else:
             data[self.project][1] = str(self.total_time)
+
         util.update_data(data)
         self.speak_dialog("stop.projects")
 
