@@ -1,0 +1,1 @@
+Added {{ time }} to {{ project }}. {{ total_time }} currently tracked for {{ project }}.

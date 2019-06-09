@@ -1,0 +1,2 @@
+Removed {{ time }} from {{ project }}. {{ total_time }} currently tracked for {{ project }}.
+Shaved {{ time }} off of {{ project }}. {{ total_time }} currently tracked for {{ project }}.
