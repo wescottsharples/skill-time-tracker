@@ -90,7 +90,6 @@ def convert_time(seconds=None):
 
 # TODO close enough function
 
-
 class TimeTrackerSkill(MycroftSkill):
 
     @intent_file_handler('Create.intent')
@@ -126,6 +125,48 @@ class TimeTrackerSkill(MycroftSkill):
         # project_list contains list of project names only for mycroft to say
         self.speak_dialog('list.projects', {'projects': projects})
 
+
+    @intent_file_handler('Create.intent')
+    def start_project(self, message):
+        project = message.data['project']
+        data = read_data()
+        name_test = get_project(data, project)
+        if name_test:
+            data[project]["start"] = time.time()
+            data[project]["active"] = True
+        else:
+            # project name not in project list
+            pass
+        write_data(data)
+        self.speak_dialog('create.project', {})
+
+    @intent_file_handler('Create.intent')
+    def stop_project(self, message):
+        project = message.data['project']
+        data = read_data()
+        name_test = get_project(data, project)
+        if name_test:
+            if data[project]["active"] == True:
+                new_time = time.time() - data[project]["start"]
+                # Tracking total time
+                if data[project][total] > 0:
+                    new_total = data[project][total] + new_time
+                    data[project][total] = new_total
+                else:
+                    data[project][total] = new_total
+                # Tracking day time
+                today_date = str(datetime.today()).split()[0]
+                try:
+                    day_time = data[project]["days"][today_date]
+                    new_day_time = day_time + new_time
+                    data[project]["days"][today_date] = new_day_time
+                except KeyError:
+                    data[project]["days"][today_date] = new_time
+            else:
+                # Project is not active
+                pass
+        write_data(data)
+        self.speak_dialog('create.project', {})
 
 def create_skill():
     return TimeTrackerSkill()
