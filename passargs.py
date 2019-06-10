@@ -90,23 +90,6 @@ def verify_data_exists():
         with open(DIR_PATH + "/projects.json", "w") as wf:
             json.dump(template, wf)
 
-
-def set_max_projects():
-    """Calculates the new max_projects data, and updates to a new value
-    if it has changed.
-    """
-    data_checker()
-    data = read_data()
-    keycount = list(data)
-    newmax = keycount - 2
-    newmax = str(newmax)
-    if newmax == data["max_projects"]:
-        pass
-    else:
-        newdata = {"max_projects": newmax}
-        update_data(newdata)
-
-
 def convert_time(seconds=None):
     """Converts the seconds format to proper readable time."""
     sec = timedelta(seconds=int(seconds))
@@ -119,26 +102,22 @@ def convert_time(seconds=None):
     # TODO this list should be used to display any time format of a proj
     return time_list
 
-
-def get_project(user_input=None):
+def get_project(data=None, name=None):
     """Checks if the user_input is within project list
 
     Args:
-        user_input (str): Project name that the user says.
+        data (dict): Entire projects.json.
+        name (str): Name of project to match in projects.json
 
     Returns:
-        project_name (str): The name of the project that the user wants
-            to track float.
+        k (str): Project ID key from projects.json IF EXISTS.
+        None: If project name not found.
     """
-    project_name = None
-    # TODO Loop through user_input until it finds a project
-    data = read_data()
-    keys = list(data)
-    for i in keys:
-        if "list_p" in i:
-            if data[i][0] == user_input:
-                return i
-
+    for k in data.keys():
+        if data[k]["name"] == name:
+            return k
+        else:
+            return None
 
 class TimeTrackerSkill(MycroftSkill):
 
@@ -159,6 +138,14 @@ class TimeTrackerSkill(MycroftSkill):
             write_data(projects)
             self.speak_dialog('create.project', {'project': project})
 
+    @intent_file_handler('Create.intent')
+    def list_project(self, message):
+        project_list = []
+        data = read_data()
+        for k in data.keys():
+            project_list.append(data[k]["name"])
+        # project_list contains list of project names only for mycroft to say
+        self.speak_dialog('list.project', {})
 
 def create_skill():
     return TimeTrackerSkill()
