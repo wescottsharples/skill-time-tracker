@@ -19,7 +19,6 @@ import os
 import time
 import json
 from datetime import datetime
-from collections import OrderedDict
 from datetime import timedelta
 from adapt.intent import IntentBuilder
 
@@ -41,11 +40,10 @@ def read_data():
     """
     try:
         with open(DIR_PATH + "/projects.json", "r") as rf:
-            data = json.load(rf, object_pairs_hook=OrderedDict)
-
+            data = json.load(rf)
         return data
     except:
-        return None
+        return {}
 
 
 def update_data(newdata=None):
@@ -75,20 +73,7 @@ def write_data(data):
     """
     with open(DIR_PATH + "/projects.json", "w") as wf:
         json.dump(data, wf)
-    
 
-def verify_data_exists():
-    """Checks if projects data exists (projects.json). If it does not exist,
-    creates a template of the project data.
-    """
-    exists = os.path.isfile(DIR_PATH + '/projects.json')
-
-    if exists:
-        pass
-    else:
-        template = {"current_project": "None", "max_projects": "0"}
-        with open(DIR_PATH + "/projects.json", "w") as wf:
-            json.dump(template, wf)
 
 def convert_time(seconds=None):
     """Converts the seconds format to proper readable time."""
@@ -102,50 +87,45 @@ def convert_time(seconds=None):
     # TODO this list should be used to display any time format of a proj
     return time_list
 
-def get_project(data=None, name=None):
-    """Checks if the user_input is within project list
 
-    Args:
-        data (dict): Entire projects.json.
-        name (str): Name of project to match in projects.json
+# TODO close enough function
 
-    Returns:
-        k (str): Project ID key from projects.json IF EXISTS.
-        None: If project name not found.
-    """
-    for k in data.keys():
-        if data[k]["name"] == name:
-            return k
-        else:
-            return None
 
 class TimeTrackerSkill(MycroftSkill):
 
     @intent_file_handler('Create.intent')
     def create_project(self, message):
-        project = message.data['project']
+        project = message.data.get('project')
         # TODO get rid of this
         if not project:
             self.speak_dialog('project.not.found')
         else:
             projects = read_data()
-            if projects:
-                proj_id = int(list(projects.keys())[-1]) + 1
-            else:
-                proj_id = 0
-                projects = OrderedDict()
-            projects[proj_id] = {'name': project, 'total': 0, 'days': {}, 'start': 0.0, 'active': False}
+            projects[project] = {'total': 0.0, 'days': {}, 'start': 0.0, 'active': False}
             write_data(projects)
             self.speak_dialog('create.project', {'project': project})
 
-    @intent_file_handler('Create.intent')
+    @intent_file_handler('Delete.intent')
+    def delete_project(self, message):
+        project = message.data.get('project')
+        projects = read_data()
+        if not projects:
+            self.speak_dialog('projects.not.found')
+        else:
+            try:
+                del projects[project]
+            except KeyError:
+                self.speak_dialog('project.not.found')
+            write_data(projects)
+            self.speak_dialog('delete.project', {'project': project})
+
+    @intent_file_handler('List.intent')
     def list_project(self, message):
-        project_list = []
         data = read_data()
-        for k in data.keys():
-            project_list.append(data[k]["name"])
+        projects = list(data.keys())
         # project_list contains list of project names only for mycroft to say
-        self.speak_dialog('list.project', {})
+        self.speak_dialog('list.projects', {'projects': projects})
+
 
 def create_skill():
     return TimeTrackerSkill()
