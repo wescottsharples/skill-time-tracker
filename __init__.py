@@ -124,10 +124,10 @@ class TimeTrackerSkill(MycroftSkill):
         else:
             try:
                 del projects[project]
+                write_data(projects)
+                self.speak_dialog('delete.project', {'project': project})
             except KeyError:
                 self.speak_dialog('project.not.found')
-            write_data(projects)
-            self.speak_dialog('delete.project', {'project': project})
 
     @intent_file_handler('List.intent')
     def list_project(self, message):
@@ -143,10 +143,10 @@ class TimeTrackerSkill(MycroftSkill):
         try:
             data[project]["start"] = time.time()
             data[project]["active"] = True
+            write_data(data)
+            self.speak_dialog('start.project', {'project': project})
         except KeyError:
             self.speak_dialog('project.not.found')
-        write_data(data)
-        self.speak_dialog('start.project', {'project': project})
 
     @intent_file_handler('Stop.intent')
     def stop_project(self, message):
@@ -174,34 +174,34 @@ class TimeTrackerSkill(MycroftSkill):
                     data[project]["days"][today_date] = new_day_time
                 except KeyError:
                     data[project]["days"][today_date] = new_time
+                    day_time = data[project]["days"][today_date]
+                write_data(data)
+                if new_time:
+                    curr_time_list = convert_time(new_time)
+                    res = []
+                    for k, v in curr_time_list.items():
+                        res.append("{} {}".format(v, k))
+                    try:
+                        res = res.join(" and ")
+                    except AttributeError:
+                        res = res[0]
+                        pass
+                    current_sess = res
+                if day_time:
+                    day_time_list = convert_time(day_time)
+                    res = []
+                    for k, v in day_time_list.items():
+                        res.append("{} {}".format(v, k))
+                    try:
+                        res = res.join(" and ")
+                    except AttributeError:
+                        res = res[0]
+                        pass
+                    day_sess = res
+                # Have some kind of pause between cureent_sess and day_sess
+                self.speak_dialog('stop.project', {'project': project, 'current': current_sess, 'today': day_sess})
         except KeyError:
             self.speak_dialog('project.not.found')
-        write_data(data)
-        if new_time:
-            curr_time_list = convert_time(new_time)
-            res = []
-            for k, v in curr_time_list.items():
-                res.append("{} {}".format(v, k))
-            try:
-                res = res.join(" & ")
-            except AttributeError:
-                res = res[0]
-                pass
-            current_sess = "Current session time for {} is {}".format(project, res)
-        if day_time:
-            day_time_list = convert_time(day_time)
-            res = []
-            for k, v in day_time_list.items():
-                res.append("{} {}".format(v, k))
-            try:
-                res = res.join(" & ")
-            except AttributeError:
-                res = res[0]
-                pass
-            day_sess = "Today's total time for {} is {}".format(project, res)
-        # Have some kind of pause between cureent_sess and day_sess
-        elapsed_time = current_sess + " " + day_sess 
-        self.speak_dialog('stop.project', {'project': project, 'elapsed_time': elapsed_time})
 
 def create_skill():
     return TimeTrackerSkill()
