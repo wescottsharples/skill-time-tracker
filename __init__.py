@@ -22,8 +22,9 @@ from datetime import datetime
 from datetime import timedelta
 from adapt.intent import IntentBuilder
 
-from mycroft.skills.core import MycroftSkill
+from mycroft.skills.core import MycroftSkill, intent_file_handler, intent_handler
 from mycroft.util.log import getLogger
+
 
 __author__ = 'eward'
 
@@ -31,118 +32,19 @@ LOGGER = getLogger(__name__)
 DIR_PATH = os.path.dirname(os.path.realpath(__file__))
 
 
-class TimeTrackerSkill(MycroftSkill):
-    def __init__(self):
-        super(TimeTrackerSkill, self).__init__(name="TimeTrackerSkill")
-        self.project = get_project()
-        self.s_time = 0
-        # curr_total is a current start-stop total time (start-stop only)
-        self.curr_total = 0
-        # total_time is a current project total time (start-stop + start-stop)
-        self.total_time = 0
-
-    def initialize(self):
-        create_projects_intent = IntentBuilder("CreateProjectsIntent"). \
-            require("CreateProjectsKeyword").build()
-        self.register_intent(create_projects_intent, self.handle_create_projects_intent)
-
-        list_projects_intent = IntentBuilder("ListProjectsIntent"). \
-            require("ListProjectsKeyword").build()
-        self.register_intent(list_projects_intent, self.handle_list_projects_intent)
-
-        delete_projects_intent = IntentBuilder("DeleteProjectsIntent"). \
-            require("DeleteProjectsKeyword").build()
-        self.register_intent(delete_projects_intent, self.handle_delete_projects_intent)
-
-        start_projects_intent = IntentBuilder("StartProjectsIntent"). \
-            require("StartProjectsKeyword").build()
-        self.register_intent(start_projects_intent, self.handle_start_projects_intent)
-
-        stop_projects_intent = IntentBuilder("StopProjectsIntent"). \
-            require("StopProjectsKeyword").build()
-        self.register_intent(stop_projects_intent, self.handle_stop_projects_intent)
-
-    def handle_list_projects_intent(self, message):
-        data_checker()
-        data = read_data()
-        keys = list(data)
-        project_list = []
-        for k in keys:
-            if "list_p" in k:
-                project_list.append(data[k][0])
-        # project_list contains projects for mycroft to say
-        self.speak_dialog("list.projects")
-
-    def handle_create_projects_intent(self, message):
-        data_checker()
-        set_max_projects()
-        data = read_data()
-        proj_name = message.data["project"]
-        proj_num = int(data["max_projects"]) + 1
-        proj_val = [proj_name, "0", {}]
-        proj_key = "list_project_{}".format(str(proj_num))
-        proj_data = {proj_key: proj_val}
-        write_data(proj_data)
-        self.speak_dialog("create.projects")
-
-    def handle_delete_projects_intent(self, message):
-        data_checker()
-        data = read_data()
-        proj_name = message.data["project"]
-        name = get_project()
-        del data[proj_name]
-        update_data(data)
-        self.speak_dialog("delete.projects")
-
-    def handle_start_projects_intent(self, message):
-        data_checker()
-        self.s_time = time.time()
-        self.speak_dialog("start.projects")
-
-    def handle_stop_projects_intent(self, message):
-        data_checker()
-        data = read_data()
-        today_date = str(datetime.today()).split()[0]
-        project_calendar = data[self.project][2]
-        self.curr_total = time.time() - self.s_time
-        # Tracking current day's time
-        # TODO track if theres new data, if yes then use write not update
-        if project_calendar == {}:
-            project_calendar[today_date] = str(self.curr_total)
-        else:
-            res = float(project_calendar[today_date])
-            res += self.curr_total
-            project_calendar[today_date] = str(res)
-        data[self.project][2] = project_calendar
-        # Transferring current start-stop total time session to project session
-        self.total_time += self.curr_total
-        if str(data[self.project][1]) != "0":
-            tempnum = float(data[self.project][1])
-            tempnum += self.curr_total
-            data[self.project][1] = str(tempnum)
-        else:
-            data[self.project][1] = str(self.total_time)
-
-        update_data(data)
-        self.speak_dialog("stop.projects")
-
-    def stop(self):
-        pass
-
-
-def create_skill():
-    return TimeTrackerSkill()
-
 def read_data():
     """Reads current data and returns it's json in dict format.
 
     Returns:
         current_data (dict): Current read data from projects.json.
     """
-    with open(DIR_PATH + "/projects.json", "r") as rf:
-        data = json.load(rf)
+    try:
+        with open(DIR_PATH + "/projects.json", "r") as rf:
+            data = json.load(rf)
+        return data
+    except:
+        return {}
 
-    return data
 
 def update_data(newdata=None):
     """Updates current data and writes to projects.json.
@@ -162,47 +64,16 @@ def update_data(newdata=None):
     with open(DIR_PATH + "/projects.json", "w") as wf:
         json.dump(data, wf)
 
-def write_data(newdata=None):
+
+def write_data(data):
     """Creates new key in current projects.json and writes it.
 
     Args:
         newdata (dict): New data to write to projects.json.
     """
-    data = read_data()
-    newkeys = list(newdata)
-    for i in newkeys:
-        data[i] = newdata[i]
-
     with open(DIR_PATH + "/projects.json", "w") as wf:
         json.dump(data, wf)
-    
-def data_checker():
-    """Checks if projects data exists (projects.json). If it does not exist,
-    creates a template of the project data.
-    """
-    exists = os.path.isfile(DIR_PATH + '/projects.json')
 
-    if exists:
-        pass
-    else:
-        template = {"current_project": "None", "max_projects": "0"}
-        with open(DIR_PATH + "/projects.json", "w") as wf:
-            json.dump(template, wf)
-
-def set_max_projects():
-    """Calculates the new max_projects data, and updates to a new value
-    if it has changed.
-    """
-    data_checker()
-    data = read_data()
-    keycount = list(data)
-    newmax = keycount - 2
-    newmax = str(newmax)
-    if newmax == data["max_projects"]:
-        pass
-    else:
-        newdata = {"max_projects": newmax}
-        update_data(newdata)
 
 def convert_time(seconds=None):
     """Converts the seconds format to proper readable time."""
@@ -216,21 +87,45 @@ def convert_time(seconds=None):
     # TODO this list should be used to display any time format of a proj
     return time_list
 
-def get_project(user_input=None):
-    """Checks if the user_input is within project list
 
-    Args:
-        user_input (str): Project name that the user says.
+# TODO close enough function
 
-    Returns:
-        project_name (str): The name of the project that the user wants
-            to track.
-    """
-    project_name = None
-    # TODO Loop through user_input until it finds a project
-    data = read_data()
-    keys = list(data)
-    for i in keys:
-        if "list_p" in i:
-            if data[i][0] == user_input:
-                return i
+
+class TimeTrackerSkill(MycroftSkill):
+
+    @intent_file_handler('Create.intent')
+    def create_project(self, message):
+        project = message.data.get('project')
+        # TODO get rid of this
+        if not project:
+            self.speak_dialog('project.not.found')
+        else:
+            projects = read_data()
+            projects[project] = {'total': 0.0, 'days': {}, 'start': 0.0, 'active': False}
+            write_data(projects)
+            self.speak_dialog('create.project', {'project': project})
+
+    @intent_file_handler('Delete.intent')
+    def delete_project(self, message):
+        project = message.data.get('project')
+        projects = read_data()
+        if not projects:
+            self.speak_dialog('projects.not.found')
+        else:
+            try:
+                del projects[project]
+            except KeyError:
+                self.speak_dialog('project.not.found')
+            write_data(projects)
+            self.speak_dialog('delete.project', {'project': project})
+
+    @intent_file_handler('List.intent')
+    def list_project(self, message):
+        data = read_data()
+        projects = list(data.keys())
+        # project_list contains list of project names only for mycroft to say
+        self.speak_dialog('list.projects', {'projects': projects})
+
+
+def create_skill():
+    return TimeTrackerSkill()
