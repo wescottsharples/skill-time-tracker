@@ -19,6 +19,7 @@ import os
 import time
 import json
 from datetime import datetime
+from collections import OrderedDict
 from datetime import timedelta
 from adapt.intent import IntentBuilder
 
@@ -38,10 +39,13 @@ def read_data():
     Returns:
         current_data (dict): Current read data from projects.json.
     """
-    with open(DIR_PATH + "/projects.json", "r") as rf:
-        data = json.load(rf)
+    try:
+        with open(DIR_PATH + "/projects.json", "r") as rf:
+            data = json.load(rf, object_pairs_hook=OrderedDict)
 
-    return data
+        return data
+    except:
+        return None
 
 
 def update_data(newdata=None):
@@ -63,17 +67,12 @@ def update_data(newdata=None):
         json.dump(data, wf)
 
 
-def write_data(newdata=None):
+def write_data(data):
     """Creates new key in current projects.json and writes it.
 
     Args:
         newdata (dict): New data to write to projects.json.
     """
-    data = read_data()
-    newkeys = list(newdata)
-    for i in newkeys:
-        data[i] = newdata[i]
-
     with open(DIR_PATH + "/projects.json", "w") as wf:
         json.dump(data, wf)
     
@@ -129,7 +128,7 @@ def get_project(user_input=None):
 
     Returns:
         project_name (str): The name of the project that the user wants
-            to track.
+            to track float.
     """
     project_name = None
     # TODO Loop through user_input until it finds a project
@@ -150,6 +149,14 @@ class TimeTrackerSkill(MycroftSkill):
             self.speak_dialog('project.not.found')
         else:
             verify_data_exists()
+            projects = read_data()
+            if projects:
+                proj_id = int(list(projects.keys())[-1]) + 1
+            else:
+                proj_id = 0
+                projects = OrderedDict()
+            projects[proj_id] = {'name': project, 'total': 0, 'days': {}}
+            write_data(projects)
             self.speak_dialog('create.project', {'project': project})
 
 
