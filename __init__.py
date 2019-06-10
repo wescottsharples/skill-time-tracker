@@ -16,9 +16,10 @@
 # along with Mycroft Core.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
-import util
 import time
+import json
 from datetime import datetime
+from datetime import timedelta
 from adapt.intent import IntentBuilder
 
 from mycroft.skills.core import MycroftSkill
@@ -27,12 +28,13 @@ from mycroft.util.log import getLogger
 __author__ = 'eward'
 
 LOGGER = getLogger(__name__)
+DIR_PATH = os.path.dirname(os.path.realpath(__file__))
 
 
 class TimeTrackerSkill(MycroftSkill):
     def __init__(self):
         super(TimeTrackerSkill, self).__init__(name="TimeTrackerSkill")
-        self.project = util.get_project()
+        self.project = get_project()
         self.s_time = 0
         # curr_total is a current start-stop total time (start-stop only)
         self.curr_total = 0
@@ -40,13 +42,13 @@ class TimeTrackerSkill(MycroftSkill):
         self.total_time = 0
 
     def initialize(self):
-        list_projects_intent = IntentBuilder("ListProjectsIntent"). \
-            require("ListProjectsKeyword").build()
-        self.register_intent(list_projects_intent, self.handle_list_projects_intent)
-
         create_projects_intent = IntentBuilder("CreateProjectsIntent"). \
             require("CreateProjectsKeyword").build()
         self.register_intent(create_projects_intent, self.handle_create_projects_intent)
+
+        list_projects_intent = IntentBuilder("ListProjectsIntent"). \
+            require("ListProjectsKeyword").build()
+        self.register_intent(list_projects_intent, self.handle_list_projects_intent)
 
         delete_projects_intent = IntentBuilder("DeleteProjectsIntent"). \
             require("DeleteProjectsKeyword").build()
@@ -61,8 +63,8 @@ class TimeTrackerSkill(MycroftSkill):
         self.register_intent(stop_projects_intent, self.handle_stop_projects_intent)
 
     def handle_list_projects_intent(self, message):
-        util.data_checker()
-        data = util.read_data()
+        data_checker()
+        data = read_data()
         keys = list(data)
         project_list = []
         for k in keys:
@@ -72,34 +74,34 @@ class TimeTrackerSkill(MycroftSkill):
         self.speak_dialog("list.projects")
 
     def handle_create_projects_intent(self, message):
-        util.data_checker()
-        util.set_max_projects()
-        data = util.read_data()
+        data_checker()
+        set_max_projects()
+        data = read_data()
         proj_name = message.data["project"]
         proj_num = int(data["max_projects"]) + 1
         proj_val = [proj_name, "0", {}]
         proj_key = "list_project_{}".format(str(proj_num))
         proj_data = {proj_key: proj_val}
-        util.write_data(proj_data)
+        write_data(proj_data)
         self.speak_dialog("create.projects")
 
     def handle_delete_projects_intent(self, message):
-        util.data_checker()
-        data = util.read_data()
+        data_checker()
+        data = read_data()
         proj_name = message.data["project"]
         name = get_project()
         del data[proj_name]
-        util.update_data(data)
+        update_data(data)
         self.speak_dialog("delete.projects")
 
     def handle_start_projects_intent(self, message):
-        util.data_checker()
+        data_checker()
         self.s_time = time.time()
         self.speak_dialog("start.projects")
 
     def handle_stop_projects_intent(self, message):
-        util.data_checker()
-        data = util.read_data()
+        data_checker()
+        data = read_data()
         today_date = str(datetime.today()).split()[0]
         project_calendar = data[self.project][2]
         self.curr_total = time.time() - self.s_time
@@ -121,7 +123,7 @@ class TimeTrackerSkill(MycroftSkill):
         else:
             data[self.project][1] = str(self.total_time)
 
-        util.update_data(data)
+        update_data(data)
         self.speak_dialog("stop.projects")
 
     def stop(self):
@@ -130,3 +132,105 @@ class TimeTrackerSkill(MycroftSkill):
 
 def create_skill():
     return TimeTrackerSkill()
+
+def read_data():
+    """Reads current data and returns it's json in dict format.
+
+    Returns:
+        current_data (dict): Current read data from projects.json.
+    """
+    with open(DIR_PATH + "/projects.json", "r") as rf:
+        data = json.load(rf)
+
+    return data
+
+def update_data(newdata=None):
+    """Updates current data and writes to projects.json.
+
+    This function will update all key to new values in current projects.json.
+
+    Args:
+        newdata (dict): New data to update to projects.json.
+    """
+    data = read_data()
+    newkeys = list(newdata)
+    for k in data.keys():
+        for i in newkeys:
+            if k == i:
+                data[k] = newdata[i]
+
+    with open(DIR_PATH + "/projects.json", "w") as wf:
+        json.dump(data, wf)
+
+def write_data(newdata=None):
+    """Creates new key in current projects.json and writes it.
+
+    Args:
+        newdata (dict): New data to write to projects.json.
+    """
+    data = read_data()
+    newkeys = list(newdata)
+    for i in newkeys:
+        data[i] = newdata[i]
+
+    with open(DIR_PATH + "/projects.json", "w") as wf:
+        json.dump(data, wf)
+    
+def data_checker():
+    """Checks if projects data exists (projects.json). If it does not exist,
+    creates a template of the project data.
+    """
+    exists = os.path.isfile(DIR_PATH + '/projects.json')
+
+    if exists:
+        pass
+    else:
+        template = {"current_project": "None", "max_projects": "0"}
+        with open(DIR_PATH + "/projects.json", "w") as wf:
+            json.dump(template, wf)
+
+def set_max_projects():
+    """Calculates the new max_projects data, and updates to a new value
+    if it has changed.
+    """
+    data_checker()
+    data = read_data()
+    keycount = list(data)
+    newmax = keycount - 2
+    newmax = str(newmax)
+    if newmax == data["max_projects"]:
+        pass
+    else:
+        newdata = {"max_projects": newmax}
+        update_data(newdata)
+
+def convert_time(seconds=None):
+    """Converts the seconds format to proper readable time."""
+    sec = timedelta(seconds=int(seconds))
+    d = datetime(1, 1, 1) + sec
+    days = d.day - 1
+    hrs = d.hour
+    minutes = d.minute
+    secs = d.second
+    time_list = [days, hrs, minutes, secs]
+    # TODO this list should be used to display any time format of a proj
+    return time_list
+
+def get_project(user_input=None):
+    """Checks if the user_input is within project list
+
+    Args:
+        user_input (str): Project name that the user says.
+
+    Returns:
+        project_name (str): The name of the project that the user wants
+            to track.
+    """
+    project_name = None
+    # TODO Loop through user_input until it finds a project
+    data = read_data()
+    keys = list(data)
+    for i in keys:
+        if "list_p" in i:
+            if data[i][0] == user_input:
+                return i
