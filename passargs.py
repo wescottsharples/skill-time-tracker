@@ -145,17 +145,17 @@ class TimeTrackerSkill(MycroftSkill):
     @intent_file_handler('Create.intent')
     def create_project(self, message):
         project = message.data['project']
+        # TODO get rid of this
         if not project:
             self.speak_dialog('project.not.found')
         else:
-            verify_data_exists()
             projects = read_data()
             if projects:
                 proj_id = int(list(projects.keys())[-1]) + 1
             else:
                 proj_id = 0
                 projects = OrderedDict()
-            projects[proj_id] = {'name': project, 'total': 0, 'days': {}}
+            projects[proj_id] = {'name': project, 'total': 0, 'days': {}, 'start': 0.0, 'active': False}
             write_data(projects)
             self.speak_dialog('create.project', {'project': project})
 
