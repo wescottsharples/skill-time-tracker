@@ -126,6 +126,46 @@ class TimeTrackerSkill(MycroftSkill):
         # project_list contains list of project names only for mycroft to say
         self.speak_dialog('list.projects', {'projects': projects})
 
+    @intent_file_handler('Start.intent')
+    def start_project(self, message):
+        project = message.data.get('project')
+        data = read_data()
+        try:
+            data[project]["start"] = time.time()
+            data[project]["active"] = True
+        except KeyError:
+            self.speak_dialog('project.not.found')
+        write_data(data)
+        self.speak_dialog('start.project', {'project': project})
+
+    @intent_file_handler('Stop.intent')
+    def stop_project(self, message):
+        project = message.data.get('project')
+        data = read_data()
+        try:
+            if data[project]["active"] == True:
+                new_time = time.time() - data[project]["start"]
+                # Tracking total time
+                if data[project]['total'] > 0:
+                    new_total = data[project]['total'] + new_time
+                    data[project]['total'] = new_total
+                else:
+                    data[project]['total'] = new_time
+                data[project]['active'] = False
+                # Tracking day time
+                today_date = str(datetime.today()).split()[0]
+                try:
+                    day_time = data[project]["days"][today_date]
+                    new_day_time = day_time + new_time
+                    data[project]["days"][today_date] = new_day_time
+                except KeyError:
+                    data[project]["days"][today_date] = new_time
+        except KeyError:
+            self.speak_dialog('project.not.found')
+        write_data(data)
+        elapsed_time = str(round(data[project]['total'])) + ' ' + 'seconds'
+        self.speak_dialog('stop.project', {'project': project, 'elapsed_time': elapsed_time})
+
 
 def create_skill():
     return TimeTrackerSkill()
