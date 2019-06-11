@@ -83,9 +83,17 @@ def convert_time(seconds=None):
     hrs = d.hour
     minutes = d.minute
     secs = d.second
-    time_list = [days, hrs, minutes, secs]
-    # TODO this list should be used to display any time format of a proj
-    return time_list
+    times = {"days": days, "hours": hrs, "minutes": minutes, "seconds": secs}
+    keys = ["days", "hours", "minutes", "seconds"]
+    for i in keys:
+        if times[i] == 0:
+            del times[i]
+        # Removing s at the end if it is singular
+        if times[i] == 1:
+            key = i[:-1]
+            times[key] = times[i]
+            del times[i]
+    return times
 
 
 # TODO close enough function
@@ -142,6 +150,8 @@ class TimeTrackerSkill(MycroftSkill):
     def stop_project(self, message):
         project = message.data.get('project')
         data = read_data()
+        new_time = None
+        day_time = None
         try:
             if data[project]["active"] == True:
                 new_time = time.time() - data[project]["start"]
@@ -163,9 +173,22 @@ class TimeTrackerSkill(MycroftSkill):
         except KeyError:
             self.speak_dialog('project.not.found')
         write_data(data)
-        elapsed_time = str(round(data[project]['total'])) + ' ' + 'seconds'
+        if new_time:
+            curr_time_list = convert_time(new_time)
+            res = []
+            for k, v in curr_time_list.items():
+                res.append("{} {}".format(v, k))
+            res = res.join(" & ")
+            current_sess = "Current session time for {} is {}".format(project, res)
+        if day_time:
+            day_time_list = convert_time(day_time)
+            res = []
+            for k, v in day_time_list.items():
+                res.append("{} {}".format(v, k))
+            day_sess = "Today's total time for {} is {}".format(project, res)
+            # Have some kind of pause between cureent_sess and day_sess
+            elapsed_time = current_sess + " " + day_sess 
         self.speak_dialog('stop.project', {'project': project, 'elapsed_time': elapsed_time})
-
 
 def create_skill():
     return TimeTrackerSkill()
