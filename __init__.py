@@ -23,6 +23,7 @@ from datetime import timedelta
 from adapt.intent import IntentBuilder
 
 from mycroft.skills.core import MycroftSkill, intent_file_handler, intent_handler
+from mycroft.skills.context import adds_context, removes_context
 from mycroft.util.log import getLogger
 
 
@@ -180,71 +181,105 @@ def format_time(new_time=None, day_time=None):
 
 class TimeTrackerSkill(MycroftSkill):
 
-    @intent_file_handler('Create.intent')
-    def create_project(self, message):
-        project = message.data.get('project')
-        # TODO get rid of this
-        if not project:
-            self.speak_dialog('project.not.found')
+    def add_project(self, project):
+        projects = read_data()
+        if not projects:
+            self.speak_dialog('projects.not.found')
+        if project in projects:
+            self.speak("{} already exists.".format(project))
         else:
-            projects = read_data()
             projects[project] = {'total': 0.0, 'days': {}, 'start': 0.0, 'active': False}
             write_data(projects)
             self.speak_dialog('create.project', {'project': project})
 
-    @intent_file_handler('Delete.intent')
-    def delete_project(self, message):
-        project = message.data.get('project')
+    def delete_project(self, project):
         projects = read_data()
-        if not projects:
-            self.speak_dialog('projects.not.found')
-        else:
-            try:
-                del projects[project]
-                write_data(projects)
-                self.speak_dialog('delete.project', {'project': project})
-            except KeyError:
-                self.speak_dialog('project.not.found')
-
-    @intent_file_handler('List.intent')
-    def list_project(self, message):
-        data = read_data()
-        projects = list(data.keys())
-        # project_list contains list of project names only for mycroft to say
-        self.speak_dialog('list.projects', {'projects': projects})
-
-    @intent_file_handler('Start.intent')
-    def start_project(self, message):
-        project = message.data.get('project')
-        data = read_data()
         try:
-            data[project]["start"] = time.time()
-            data[project]["active"] = True
-            write_data(data)
-            self.speak_dialog('start.project', {'project': project})
+            del projects[project]
+            write_data(projects)
+            self.speak_dialog('delete.project', {'project': project})
         except KeyError:
             self.speak_dialog('project.not.found')
 
-    @intent_file_handler('Stop.intent')
-    def stop_project(self, message):
-        project = message.data.get('project')
+    @adds_context('ProjectName')
+    @removes_context('DeleteContext')
+    @intent_handler(IntentBuilder('CreateIntent').require('CreateKeyword').optionally('ProjectName'))
+    def handle_create_project_intent(self, message):
+        project = message.data.get('ProjectName')
+        # TODO get rid of this
+        if not project:
+            self.set_context('SpecifyContext', 'True')
+            self.set_context('CreateContext', 'True')
+            self.speak("What would you like to call the new project?", expect_response=True)
+        else:
+            self.add_project(project)
+
+    @removes_context('CreateContext')
+    @intent_handler(IntentBuilder('DeleteIntent').require('DeleteKeyword').optionally('ProjectName'))
+    def handle_delete_project_intent(self, message):
+        project = message.data.get('ProjectName')
+        if not project:
+            self.set_context('SpecifyContext', 'True')
+            self.set_context('DeleteContext', 'True')
+            self.speak("Which project would you like to delete?", expect_response=True)
+        else:
+            self.delete_project(project)
+
+    @intent_handler(IntentBuilder('StartIntent').require('StartKeyword').require('ProjectName'))
+    def handle_start_project_intent(self, message):
+        project_name = message.data.get('ProjectName')
         data = read_data()
+        project = data.get(project_name)
+        if project is None:
+            self.speak_dialog('project.not.found')
+        elif project.get('active'):
+            self.speak("{} is already being tracked.".format(project_name))
+        else:
+            project['start'] = time.time()
+            project['active'] = True
+            write_data(data)
+            self.speak_dialog('start.project', {'project': project_name})
+
+    @intent_handler(IntentBuilder('StopIntent').require('StopKeyword').require('ProjectName'))
+    def handle_stop_project_intent(self, message):
+        project_name = message.data.get('ProjectName')
+        data = read_data()
+        project = data.get(project_name)
         new_time = None
-        try:
-            if data[project]["active"] == True:
-                new_time = time.time() - data[project]["start"]
+        if project is None:
+            self.speak_dialog('project.not.found')
+        elif project.get('active'):
+                new_time = time.time() - project.get("start")
                 # Tracking total time
-                data = record_total_time(data, new_time, project)
-                data[project]['active'] = False
+                data = record_total_time(data, new_time, project_name)
+                project['active'] = False
                 # Tracking day time
-                day_time = record_day_time(data, new_time, project)
+                day_time = record_day_time(data, new_time, project_name)
                 # Formatting times
                 format_list = format_time(new_time, day_time)
                 current_sess = format_list[0]
                 day_sess = format_list[1]
-                self.speak_dialog('stop.project', {'project': project, 'current': current_sess, 'today': day_sess})
-        except KeyError:
-            self.speak_dialog('project.not.found')
+                self.speak_dialog('stop.project', {'project': project_name, 'current': current_sess, 'today': day_sess})
+        else:
+            self.speak("{} was not being tracked.".format(project_name))
+
+    @removes_context('SpecifyContext')
+    @removes_context('CreateContext')
+    @removes_context('DeleteContext')
+    @intent_handler(IntentBuilder('SpecifyProjectIntent').require('ProjectName').require('SpecifyContext').optionally('CreateContext').optionally('DeleteContext'))
+    def handle_unspecified_project(self, message):
+        project = message.data.get('ProjectName')
+        if message.data.get('CreateContext'):
+            self.add_project(project)
+        elif message.data.get('DeleteContext'):
+            self.delete_project(project)
+
+    @intent_file_handler('List.intent')
+    def handle_list_projects_intent(self, message):
+        data = read_data()
+        projects = list(data.keys())
+        # project_list contains list of project names only for mycroft to say
+        self.speak_dialog('list.projects', {'projects': projects})
 
 def create_skill():
     return TimeTrackerSkill()
