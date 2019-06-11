@@ -89,6 +89,8 @@ def convert_time(seconds=None):
         if times[i] == 0:
             del times[i]
         # Removing s at the end if it is singular
+    keys = list(times)
+    for i in keys:
         if times[i] == 1:
             key = i[:-1]
             times[key] = times[i]
@@ -152,6 +154,8 @@ class TimeTrackerSkill(MycroftSkill):
         data = read_data()
         new_time = None
         day_time = None
+        day_sess = ""
+        current_sess = ""
         try:
             if data[project]["active"] == True:
                 new_time = time.time() - data[project]["start"]
@@ -178,16 +182,25 @@ class TimeTrackerSkill(MycroftSkill):
             res = []
             for k, v in curr_time_list.items():
                 res.append("{} {}".format(v, k))
-            res = res.join(" & ")
+            try:
+                res = res.join(" & ")
+            except AttributeError:
+                res = res[0]
+                pass
             current_sess = "Current session time for {} is {}".format(project, res)
         if day_time:
             day_time_list = convert_time(day_time)
             res = []
             for k, v in day_time_list.items():
                 res.append("{} {}".format(v, k))
+            try:
+                res = res.join(" & ")
+            except AttributeError:
+                res = res[0]
+                pass
             day_sess = "Today's total time for {} is {}".format(project, res)
-            # Have some kind of pause between cureent_sess and day_sess
-            elapsed_time = current_sess + " " + day_sess 
+        # Have some kind of pause between cureent_sess and day_sess
+        elapsed_time = current_sess + " " + day_sess 
         self.speak_dialog('stop.project', {'project': project, 'elapsed_time': elapsed_time})
 
 def create_skill():
