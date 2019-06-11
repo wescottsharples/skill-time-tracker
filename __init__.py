@@ -74,6 +74,26 @@ def write_data(data):
     with open(DIR_PATH + "/projects.json", "w") as wf:
         json.dump(data, wf)
 
+def record_total_time(data=None, new_time=None, project=None):
+    """Records the total time into current read projects.json.
+
+    Checks if total time needs to be added or recorded only, then
+    returns the newly updated data variable.
+
+    Args:
+        data (dict): Read projects.json file's data.
+        new_time (float): New calculated start-stop time.
+        project (str): Project name.
+    Returns:
+        data (dict):
+    """
+    if data[project]['total'] > 0:
+        new_total = data[project]['total'] + new_time
+        data[project]['total'] = new_total
+    else:
+        data[project]['total'] = new_time
+    return data
+
 def record_day_time(data=None, new_time=None, project=None):
     """Records and checks today's logged time.
 
@@ -84,6 +104,7 @@ def record_day_time(data=None, new_time=None, project=None):
     Args:
         data (dict): Read projects.json file's data.
         new_time (float): New calculated start-stop time.
+        project (str): Project name.
     Returns:
         day_time (float): Either newly added time, or new_time.
     """
@@ -100,7 +121,6 @@ def record_day_time(data=None, new_time=None, project=None):
     write_data(data)
     return day_time
 
-
 def convert_time(seconds=None):
     """Converts the seconds format to proper readable time."""
     sec = timedelta(seconds=int(seconds))
@@ -114,7 +134,7 @@ def convert_time(seconds=None):
     for i in keys:
         if times[i] == 0:
             del times[i]
-        # Removing s at the end if it is singular
+    # Removing s at the end if it is singular
     keys = list(times)
     for i in keys:
         if times[i] == 1:
@@ -122,6 +142,37 @@ def convert_time(seconds=None):
             times[key] = times[i]
             del times[i]
     return times
+
+def format_time(new_time=None, day_time=None):
+    """Formats the times for mycroft's dialog.
+    """
+    current_sess = None
+    day_sess = None
+    # Formatting current session time
+    if new_time:
+        curr_time_list = convert_time(new_time)
+        res = []
+        for k, v in curr_time_list.items():
+            res.append("{} {}".format(v, k))
+        try:
+            res = res.join(" and ")
+        except AttributeError:
+            res = res[0]
+            pass
+        current_sess = res
+    # Formatting day's total time
+    if day_time:
+        day_time_list = convert_time(day_time)
+        res = []
+        for k, v in day_time_list.items():
+            res.append("{} {}".format(v, k))
+        try:
+            res = res.join(" and ")
+        except AttributeError:
+            res = res[0]
+            pass
+        day_sess = res
+    return [current_sess, day_sess]
 
 
 # TODO close enough function
@@ -179,44 +230,18 @@ class TimeTrackerSkill(MycroftSkill):
         project = message.data.get('project')
         data = read_data()
         new_time = None
-        day_sess = ""
-        current_sess = ""
         try:
             if data[project]["active"] == True:
                 new_time = time.time() - data[project]["start"]
                 # Tracking total time
-                if data[project]['total'] > 0:
-                    new_total = data[project]['total'] + new_time
-                    data[project]['total'] = new_total
-                else:
-                    data[project]['total'] = new_time
+                data = record_total_time(data, new_time, project)
                 data[project]['active'] = False
                 # Tracking day time
                 day_time = record_day_time(data, new_time, project)
-                # Formatting current session time
-                if new_time:
-                    curr_time_list = convert_time(new_time)
-                    res = []
-                    for k, v in curr_time_list.items():
-                        res.append("{} {}".format(v, k))
-                    try:
-                        res = res.join(" and ")
-                    except AttributeError:
-                        res = res[0]
-                        pass
-                    current_sess = res
-                # Formatting day's total time
-                if day_time:
-                    day_time_list = convert_time(day_time)
-                    res = []
-                    for k, v in day_time_list.items():
-                        res.append("{} {}".format(v, k))
-                    try:
-                        res = res.join(" and ")
-                    except AttributeError:
-                        res = res[0]
-                        pass
-                    day_sess = res
+                # Formatting times
+                format_list = format_time(new_time, day_time)
+                current_sess = format_list[0]
+                day_sess = format_list[1]
                 self.speak_dialog('stop.project', {'project': project, 'current': current_sess, 'today': day_sess})
         except KeyError:
             self.speak_dialog('project.not.found')
