@@ -1,1 +1,1 @@
-(delete|remove) (project|activity|task) {project}
+(delete|remove) (my|) (project|activity|task) {project}
