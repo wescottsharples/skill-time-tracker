@@ -172,6 +172,7 @@ class TimeTrackerSkill(MycroftSkill):
                     day_time = data[project]["days"][today_date]
                     new_day_time = day_time + new_time
                     data[project]["days"][today_date] = new_day_time
+                    day_time = new_day_time
                 except KeyError:
                     data[project]["days"][today_date] = new_time
                     day_time = data[project]["days"][today_date]
