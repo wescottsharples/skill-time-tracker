@@ -1,1 +1,1 @@
-delete (project|activity) {project}
+(delete|remove) (project|activity|task) {project}

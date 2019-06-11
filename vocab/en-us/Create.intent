@@ -1,1 +1,2 @@
-(create|make) (project|activity) {project}
+(create|make) (my|) (project|activity|task) {project}
+(setup|set up) (my|) (project|activity|task) {project}
