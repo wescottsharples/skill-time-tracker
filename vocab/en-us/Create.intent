@@ -1,1 +1,1 @@
-create project {project}
+(create|make) (project|activity) {project}

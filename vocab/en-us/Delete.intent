@@ -1,1 +1,1 @@
-delete project {project}
+delete (project|activity) {project}

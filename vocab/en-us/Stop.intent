@@ -1,1 +1,1 @@
-stop project {project}
+(stop|halt) (timing|tracking|) (project|activity) {project}

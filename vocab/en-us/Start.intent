@@ -1,1 +1,1 @@
-start project {project}
+start (timing|tracking|) (project|activity) {project}
