@@ -74,6 +74,32 @@ def write_data(data):
     with open(DIR_PATH + "/projects.json", "w") as wf:
         json.dump(data, wf)
 
+def record_day_time(data=None, new_time=None, project=None):
+    """Records and checks today's logged time.
+
+    Checks if today's date exists in the dict. If not, create a new key,
+    and if yes, add current total with new time. Then write data to
+    projects.json.
+
+    Args:
+        data (dict): Read projects.json file's data.
+        new_time (float): New calculated start-stop time.
+    Returns:
+        day_time (float): Either newly added time, or new_time.
+    """
+    day_time = None
+    today_date = str(datetime.today()).split()[0]
+    try:
+        day_time = data[project]["days"][today_date]
+        new_day_time = day_time + new_time
+        data[project]["days"][today_date] = new_day_time
+        day_time = new_day_time
+    except KeyError:
+        data[project]["days"][today_date] = new_time
+        day_time = data[project]["days"][today_date]
+    write_data(data)
+    return day_time
+
 
 def convert_time(seconds=None):
     """Converts the seconds format to proper readable time."""
@@ -153,7 +179,6 @@ class TimeTrackerSkill(MycroftSkill):
         project = message.data.get('project')
         data = read_data()
         new_time = None
-        day_time = None
         day_sess = ""
         current_sess = ""
         try:
@@ -167,16 +192,8 @@ class TimeTrackerSkill(MycroftSkill):
                     data[project]['total'] = new_time
                 data[project]['active'] = False
                 # Tracking day time
-                today_date = str(datetime.today()).split()[0]
-                try:
-                    day_time = data[project]["days"][today_date]
-                    new_day_time = day_time + new_time
-                    data[project]["days"][today_date] = new_day_time
-                    day_time = new_day_time
-                except KeyError:
-                    data[project]["days"][today_date] = new_time
-                    day_time = data[project]["days"][today_date]
-                write_data(data)
+                day_time = record_day_time(data, new_time, project)
+                # Formatting current session time
                 if new_time:
                     curr_time_list = convert_time(new_time)
                     res = []
@@ -188,6 +205,7 @@ class TimeTrackerSkill(MycroftSkill):
                         res = res[0]
                         pass
                     current_sess = res
+                # Formatting day's total time
                 if day_time:
                     day_time_list = convert_time(day_time)
                     res = []
@@ -199,7 +217,6 @@ class TimeTrackerSkill(MycroftSkill):
                         res = res[0]
                         pass
                     day_sess = res
-                # Have some kind of pause between cureent_sess and day_sess
                 self.speak_dialog('stop.project', {'project': project, 'current': current_sess, 'today': day_sess})
         except KeyError:
             self.speak_dialog('project.not.found')
