@@ -15,6 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with Mycroft Core.  If not, see <http://www.gnu.org/licenses/>.
 
+import csv
 import os
 import time
 import json
@@ -280,6 +281,23 @@ class TimeTrackerSkill(MycroftSkill):
         projects = list(data.keys())
         # project_list contains list of project names only for mycroft to say
         self.speak_dialog('list.projects', {'projects': projects})
+
+    @intent_file_handler("Csv.intent")
+    def handle_create_csv(self, message):
+        data = read_data()
+        os.mkdir(DIR_PATH + "/projects_csv")
+        project_names = list(data)
+        for name in project_names:
+            out = open(DIR_PATH + "/projects_csv/{}.csv".format(name), "w")
+            writer = csv.writer(out)
+            writer.writerow([name])
+            writer.writerow(["total time", projects[name]["total"]])
+            writer.writerow(["day", "time"])
+            days = projects[name]["days"]
+            for k, v in days.items():
+                writer.writerow([k, v])
+            del out
+        self.speak_dialog("csv.projects")
 
 def create_skill():
     return TimeTrackerSkill()
