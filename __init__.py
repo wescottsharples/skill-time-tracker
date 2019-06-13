@@ -21,6 +21,7 @@ import time
 import json
 from datetime import datetime
 from datetime import timedelta
+from datetime import date
 from adapt.intent import IntentBuilder
 
 from mycroft.skills.core import MycroftSkill, intent_file_handler, intent_handler
@@ -124,7 +125,11 @@ def record_day_time(data=None, new_time=None, project=None):
     return day_time
 
 def convert_time(seconds=None):
-    """Converts the seconds format to proper readable time."""
+    """Converts the seconds format to proper readable time.
+    Returns:
+        times (dict): a dict of times in days, hrs, minutes, secs. If 0,
+        removes the key.
+    """
     sec = timedelta(seconds=int(seconds))
     d = datetime(1, 1, 1) + sec
     days = d.day - 1
@@ -298,6 +303,27 @@ class TimeTrackerSkill(MycroftSkill):
                 writer.writerow([k, v])
             del out
         self.speak_dialog("csv.projects")
+
+    @intent_file_handler("Details.intent")
+    def handle_details_project_intent(self, message):
+        project_name = message.data.get('ProjectName')
+        project = data.get(project_name)
+        data = read_data()
+        data_daylist = data[project]["days"]
+        today = date.today()
+        daylist = []
+        total_time = 0
+        for i in range(1, 8):
+            temp = today - timedelta(days=i)
+            daylist.append(str(temp))
+        for day in daylist:
+            try:
+                time = data_daylist.get(day)
+                total_time += time
+            except KeyError:
+                pass
+        self.speak_dialog('details.projects', {"total_time": total_time})
+        
 
 def create_skill():
     return TimeTrackerSkill()
