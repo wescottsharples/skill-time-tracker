@@ -137,10 +137,7 @@ def convert_time(seconds=None):
     minutes = d.minute
     secs = d.second
     times = {"days": days, "hours": hrs, "minutes": minutes, "seconds": secs}
-    keys = ["days", "hours", "minutes", "seconds"]
-    for i in keys:
-        if times[i] == 0:
-            del times[i]
+    time_dialog = ""
     # Removing s at the end if it is singular
     keys = list(times)
     for i in keys:
@@ -148,7 +145,11 @@ def convert_time(seconds=None):
             key = i[:-1]
             times[key] = times[i]
             del times[i]
-    return times
+    for k, v in times:
+        if v != 0:
+            temp = "{} ".format(v, k)
+            time_dialog += temp
+    return time_dialog
 
 def format_time(new_time=None, day_time=None):
     """Formats the times for mycroft's dialog.
@@ -322,6 +323,7 @@ class TimeTrackerSkill(MycroftSkill):
                 total_time += time
             except KeyError:
                 pass
+        total_time = convert_time(total_time)
         self.speak_dialog('details.projects', {"total_time": total_time})
         
 
