@@ -288,7 +288,7 @@ class TimeTrackerSkill(MycroftSkill):
         # project_list contains list of project names only for mycroft to say
         self.speak_dialog('list.projects', {'projects': projects})
 
-    @intent_file_handler("Csv.intent")
+    @intent_file_handler("Export.intent")
     def handle_create_csv(self, message):
         data = read_data()
         os.mkdir(DIR_PATH + "/projects_csv")
@@ -305,7 +305,7 @@ class TimeTrackerSkill(MycroftSkill):
             del out
         self.speak_dialog("csv.projects")
 
-    @intent_file_handler("Details.intent")
+        @intent_handler(IntentBuilder('DetailsIntent').require('DetailsKeyword').require('ProjectName'))
     def handle_details_project_intent(self, message):
         project_name = message.data.get('ProjectName')
         project = data.get(project_name)
