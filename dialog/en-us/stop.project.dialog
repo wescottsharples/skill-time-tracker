@@ -1,1 +1,5 @@
 Stopped tracking {project}. {current} tracked. {today} have been tracked today for {project}.
+Stopped timing {project}. {current} tracked. {today} have been tracked today for {project}.
+No longer tracking {project}. {current} added to your {today} day total.
+Stopped tracking {project}. {current} added to your {today} day total.
+No longer timing {project}. {current} tracked. {today} have been tracked today for {project}.

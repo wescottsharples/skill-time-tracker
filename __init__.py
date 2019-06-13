@@ -168,8 +168,6 @@ class TimeTrackerSkill(MycroftSkill):
     def add_project(self, project):
         """Adds a project in projects.json when create_project is invoked."""
         projects = read_data()
-        if not projects:
-            self.speak_dialog('projects.not.found')
         if project in projects:
             self.speak("{} already exists.".format(project))
         else:
@@ -275,7 +273,7 @@ class TimeTrackerSkill(MycroftSkill):
         # project_list contains list of project names only for mycroft to say
         self.speak_dialog('list.projects', {'projects': projects})
 
-    @intent_file_handler("Csv.intent")
+    @intent_file_handler("Export.intent")
     def handle_create_csv(self, message):
         """Handler for creating a csv for all projects/tasks/activities in
         projects.json."""
@@ -301,6 +299,8 @@ class TimeTrackerSkill(MycroftSkill):
         """Handler for listing out details of a project."""
         project_name = message.data.get('ProjectName')
         data = read_data()
+        if not data:
+            self.speak_dialog('projects.not.found')
         data_daylist = data[project_name]["days"]
         today = date.today()
         daylist = []
