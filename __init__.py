@@ -36,7 +36,7 @@ DIR_PATH = os.path.dirname(os.path.realpath(__file__))
 
 
 def read_data():
-    """Reads current data and returns it's json in dict format.
+    """Reads projects.json and returns in dict format.
 
     Returns:
         current_data (dict): Current read data from projects.json.
@@ -48,28 +48,8 @@ def read_data():
     except:
         return {}
 
-
-def update_data(newdata=None):
-    """Updates current data and writes to projects.json.
-
-    This function will update all key to new values in current projects.json.
-
-    Args:
-        newdata (dict): New data to update to projects.json.
-    """
-    data = read_data()
-    newkeys = list(newdata)
-    for k in data.keys():
-        for i in newkeys:
-            if k == i:
-                data[k] = newdata[i]
-
-    with open(DIR_PATH + "/projects.json", "w") as wf:
-        json.dump(data, wf)
-
-
 def write_data(data):
-    """Creates new key in current projects.json and writes it.
+    """Writes any new data to projects.json.
 
     Args:
         newdata (dict): New data to write to projects.json.
@@ -81,7 +61,7 @@ def record_total_time(data=None, new_time=None, project=None):
     """Records the total time into current read projects.json.
 
     Checks if total time needs to be added or recorded only, then
-    returns the newly updated data variable.
+    returns the newly updated data variable. Used in stop command.
 
     Args:
         data (dict): Read projects.json file's data.
@@ -102,7 +82,7 @@ def record_day_time(data=None, new_time=None, project=None):
 
     Checks if today's date exists in the dict. If not, create a new key,
     and if yes, add current total with new time. Then write data to
-    projects.json.
+    projects.json. Used in stop command.
 
     Args:
         data (dict): Read projects.json file's data.
@@ -125,10 +105,15 @@ def record_day_time(data=None, new_time=None, project=None):
     return day_time
 
 def convert_time(seconds=None):
-    """Converts the seconds format to proper readable time.
+    """Converts seconds to a readable time format.
+
+    Used in function format_time() and the detail command.
+
+    Args:
+        seconds (float): Amount of seconds needed to be converted.
+
     Returns:
-        times (dict): a dict of times in days, hrs, minutes, secs. If 0,
-        removes the key.
+        time_str (str): A string of [time] [time_type]. Ex: 1 minute 30 seconds
     """
     sec = timedelta(seconds=int(seconds))
     d = datetime(1, 1, 1) + sec
@@ -137,7 +122,7 @@ def convert_time(seconds=None):
     minutes = d.minute
     secs = d.second
     times = {"days": days, "hours": hrs, "minutes": minutes, "seconds": secs}
-    time_dialog = ""
+    time_str = ""
     # Removing s at the end if it is singular
     keys = list(times)
     for i in keys:
@@ -148,11 +133,20 @@ def convert_time(seconds=None):
     for k, v in times.items():
         if v != 0:
             temp = "{} {} ".format(v, k)
-            time_dialog += temp
-    return time_dialog
+            time_str += temp
+    return time_str
 
 def format_time(new_time=None, day_time=None):
     """Formats the times for mycroft's dialog.
+
+    Used in the stop command.
+
+    Args:
+        new_time (float): Total time of a start-stop session.
+        day_time (float): Total time for a day.
+
+    Returns:
+        [current_sess, day_sess] (list): List of formatted time for dialog.
     """
     current_sess = None
     day_sess = None
@@ -165,12 +159,14 @@ def format_time(new_time=None, day_time=None):
     return [current_sess, day_sess]
 
 
-# TODO close enough function
-
-
 class TimeTrackerSkill(MycroftSkill):
-
+    """Time Tracker that can create and delete activities/tasks, track day
+    by day the amount of time spent on each activity/task, and export all data
+    to csv files. All activity/tasks and their time data are written to
+    projects.json in this skill's directory.
+    """
     def add_project(self, project):
+        """Adds a project in projects.json when create_project is invoked."""
         projects = read_data()
         if not projects:
             self.speak_dialog('projects.not.found')
@@ -182,6 +178,9 @@ class TimeTrackerSkill(MycroftSkill):
             self.speak_dialog('create.project', {'project': project})
 
     def delete_project(self, project):
+        """Deletes a project from projects.json if exists when delete_project
+        is invoked.
+        """
         projects = read_data()
         try:
             del projects[project]
@@ -194,8 +193,8 @@ class TimeTrackerSkill(MycroftSkill):
     @removes_context('DeleteContext')
     @intent_handler(IntentBuilder('CreateIntent').require('CreateKeyword').optionally('ProjectName'))
     def handle_create_project_intent(self, message):
+        """Handler for creating a project/task/activity."""
         project = message.data.get('ProjectName')
-        # TODO get rid of this
         if not project:
             self.set_context('SpecifyContext', 'True')
             self.set_context('CreateContext', 'True')
@@ -206,6 +205,7 @@ class TimeTrackerSkill(MycroftSkill):
     @removes_context('CreateContext')
     @intent_handler(IntentBuilder('DeleteIntent').require('DeleteKeyword').optionally('ProjectName'))
     def handle_delete_project_intent(self, message):
+        """Handler for deleting a project/task/activity."""
         project = message.data.get('ProjectName')
         if not project:
             self.set_context('SpecifyContext', 'True')
@@ -216,6 +216,7 @@ class TimeTrackerSkill(MycroftSkill):
 
     @intent_handler(IntentBuilder('StartIntent').require('StartKeyword').require('ProjectName'))
     def handle_start_project_intent(self, message):
+        """Handler for starting the time on a project/task/activity."""
         project_name = message.data.get('ProjectName')
         data = read_data()
         project = data.get(project_name)
@@ -231,6 +232,7 @@ class TimeTrackerSkill(MycroftSkill):
 
     @intent_handler(IntentBuilder('StopIntent').require('StopKeyword').require('ProjectName'))
     def handle_stop_project_intent(self, message):
+        """Handler for stopping the time on a project/task/activity."""
         project_name = message.data.get('ProjectName')
         data = read_data()
         project = data.get(project_name)
@@ -257,6 +259,7 @@ class TimeTrackerSkill(MycroftSkill):
     @removes_context('DeleteContext')
     @intent_handler(IntentBuilder('SpecifyProjectIntent').require('ProjectName').require('SpecifyContext').optionally('CreateContext').optionally('DeleteContext'))
     def handle_unspecified_project(self, message):
+        """Handler for directing unknown project/task/activity input."""
         project = message.data.get('ProjectName')
         if message.data.get('CreateContext'):
             self.add_project(project)
@@ -265,6 +268,8 @@ class TimeTrackerSkill(MycroftSkill):
 
     @intent_file_handler('List.intent')
     def handle_list_projects_intent(self, message):
+        """Handler for listing current projects/tasks/activities in
+        projects.json."""
         data = read_data()
         projects = list(data.keys())
         # project_list contains list of project names only for mycroft to say
@@ -272,6 +277,8 @@ class TimeTrackerSkill(MycroftSkill):
 
     @intent_file_handler("Csv.intent")
     def handle_create_csv(self, message):
+        """Handler for creating a csv for all projects/tasks/activities in
+        projects.json."""
         data = read_data()
         try:
             os.mkdir(DIR_PATH + "/projects_csv")
@@ -291,9 +298,9 @@ class TimeTrackerSkill(MycroftSkill):
 
     @intent_handler(IntentBuilder('DetailsIntent').require('DetailsKeyword').require('ProjectName'))
     def handle_details_project_intent(self, message):
+        """Handler for listing out details of a project."""
         project_name = message.data.get('ProjectName')
         data = read_data()
-        project = data.get(project_name)
         data_daylist = data[project_name]["days"]
         today = date.today()
         daylist = []
@@ -312,6 +319,5 @@ class TimeTrackerSkill(MycroftSkill):
         total_time = convert_time(total_time)
         self.speak_dialog('details.projects', {"total_time": total_time, "project": project_name})
         
-
 def create_skill():
     return TimeTrackerSkill()
