@@ -145,9 +145,9 @@ def convert_time(seconds=None):
             key = i[:-1]
             times[key] = times[i]
             del times[i]
-    for k, v in times:
+    for k, v in times.items():
         if v != 0:
-            temp = "{} ".format(v, k)
+            temp = "{} {} ".format(v, k)
             time_dialog += temp
     return time_dialog
 
@@ -158,28 +158,10 @@ def format_time(new_time=None, day_time=None):
     day_sess = None
     # Formatting current session time
     if new_time:
-        curr_time_list = convert_time(new_time)
-        res = []
-        for k, v in curr_time_list.items():
-            res.append("{} {}".format(v, k))
-        try:
-            res = res.join(" and ")
-        except AttributeError:
-            res = res[0]
-            pass
-        current_sess = res
+        current_sess = convert_time(new_time)
     # Formatting day's total time
     if day_time:
-        day_time_list = convert_time(day_time)
-        res = []
-        for k, v in day_time_list.items():
-            res.append("{} {}".format(v, k))
-        try:
-            res = res.join(" and ")
-        except AttributeError:
-            res = res[0]
-            pass
-        day_sess = res
+        day_sess = convert_time(day_time)
     return [current_sess, day_sess]
 
 
@@ -288,43 +270,47 @@ class TimeTrackerSkill(MycroftSkill):
         # project_list contains list of project names only for mycroft to say
         self.speak_dialog('list.projects', {'projects': projects})
 
-    @intent_file_handler("Export.intent")
+    @intent_file_handler("Csv.intent")
     def handle_create_csv(self, message):
         data = read_data()
-        os.mkdir(DIR_PATH + "/projects_csv")
+        try:
+            os.mkdir(DIR_PATH + "/projects_csv")
+        except FileExistsError:
+            pass
         project_names = list(data)
         for name in project_names:
-            out = open(DIR_PATH + "/projects_csv/{}.csv".format(name), "w")
-            writer = csv.writer(out)
-            writer.writerow([name])
-            writer.writerow(["total time", projects[name]["total"]])
-            writer.writerow(["day", "time"])
-            days = projects[name]["days"]
-            for k, v in days.items():
-                writer.writerow([k, v])
-            del out
+            with open(DIR_PATH + "/projects_csv/{}.csv".format(name), "w+") as f:
+                writer = csv.writer(f)
+                writer.writerow([name])
+                writer.writerow(["total time", data[name]["total"]])
+                writer.writerow(["day", "time"])
+                days = data[name]["days"]
+                for k, v in days.items():
+                    writer.writerow([k, v])
         self.speak_dialog("csv.projects")
 
-        @intent_handler(IntentBuilder('DetailsIntent').require('DetailsKeyword').require('ProjectName'))
+    @intent_handler(IntentBuilder('DetailsIntent').require('DetailsKeyword').require('ProjectName'))
     def handle_details_project_intent(self, message):
         project_name = message.data.get('ProjectName')
-        project = data.get(project_name)
         data = read_data()
-        data_daylist = data[project]["days"]
+        project = data.get(project_name)
+        data_daylist = data[project_name]["days"]
         today = date.today()
         daylist = []
         total_time = 0
-        for i in range(1, 8):
+        for i in range(0, 7):
             temp = today - timedelta(days=i)
             daylist.append(str(temp))
         for day in daylist:
             try:
-                time = data_daylist.get(day)
+                time = data_daylist[day]
                 total_time += time
             except KeyError:
                 pass
+            except TypeError:
+                pass
         total_time = convert_time(total_time)
-        self.speak_dialog('details.projects', {"total_time": total_time})
+        self.speak_dialog('details.projects', {"total_time": total_time, "project": project_name})
         
 
 def create_skill():
