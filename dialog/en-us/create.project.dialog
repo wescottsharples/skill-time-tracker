@@ -1,4 +1,3 @@
-Created new activity: {{ project }}. Let me know when you want to start tracking it.
-Created {{ project }}.
-Created new activity: {{ project }}.
-New activity, {{ project }}, been created.
+Created project {project}.
+Created activity {project}.
+Created task {project}.

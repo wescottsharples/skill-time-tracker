@@ -1,6 +1,1 @@
-Stopped tracking {{ project }}. {{ elapsed_time }} went by.
-Stopped tracking {{ project }}. {{ elapsed_time }} passed.
-Stopped tracking {{ project }}. {{ elapsed_time }} elapsed.
-No longer tracking {{ project }}. {{ elapsed_time }} went by.
-No longer tracking {{ project }}. {{ elapsed_time }} passed.
-No longer tracking {{ project }}. {{ elapsed_time }} elapsed.
+Stopped tracking {project}. {current} tracked. {today} have been tracked today for {project}.
