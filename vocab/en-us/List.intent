@@ -1,2 +1,7 @@
-(show|list) (my|) (projects|activities|tasks)
-what (are|is) my (projects|activities|tasks)
+(show|list) (my|) (current|) (projects|activities|tasks)
+(show|list) (my|) (current|) (project|activity|task)
+(show|list) (all|) (of|) (me|) (a|) (list|) (of|) (my|our|) (current|) (projects|activities|tasks)
+(show|list) (all|) (of|) (me|) (a|) (list|) (of|) (my|our|) (current|) (project|activity|task)
+what (are|is) my (current|) (projects|activities|tasks)
+how many (projects|activities|tasks) (do|) (I|we|) (have|)
+how many (projects|activities|tasks) are there

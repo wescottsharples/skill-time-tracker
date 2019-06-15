@@ -1,3 +1,6 @@
 Here are your current activities: {projects}.
 Here are your current projects: {projects}.
 Here are your current tasks: {projects}.
+Your current projects are {projects}.
+Your current tasks are {projects}.
+Your current activities are {projects}.
